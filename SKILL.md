@@ -241,10 +241,10 @@ For entries flagged HIGH or CRITICAL, suggest specific replacements:
 | `Bash(docker compose:*)` | Same as above (also migrates deprecated syntax) |
 | `Bash(find *)` | Remove (use Glob) or scope: `Bash(find * -name *)`, `Bash(find * -type *)` |
 | `Bash(find:*)` | Same as above |
-| `Bash(git *)` | **allow**: `Bash(git status *)`, `Bash(git log *)`, `Bash(git diff *)`, `Bash(git branch *)`, `Bash(git show *)`, `Bash(git stash *)`; **ask**: `Bash(git commit *)`, `Bash(git push *)` |
+| `Bash(git *)` | **allow**: `Bash(git status *)`, `Bash(git log *)`, `Bash(git diff *)`, `Bash(git branch *)`, `Bash(git show *)`, `Bash(git stash list *)`, `Bash(git stash show *)`, `Bash(git stash push *)`; **ask**: `Bash(git commit *)`, `Bash(git push *)`, `Bash(git stash drop *)` (data loss) |
 | `Bash(git:*)` | Same as above |
 | `Bash(PGPASSWORD=<literal> psql *)` | Remove from global. If needed in a project, add to that project's `.claude/settings.local.json` with tighter scope |
-| `Bash(npm *)` | `Bash(npm test *)`, `Bash(npm run lint *)`, `Bash(npm run build *)`, `Bash(npm run test *)`, `Bash(npm install *)`, `Bash(npm ls *)` (avoid blanket `npm run *` — can execute any package.json script including deploys/migrations) |
+| `Bash(npm *)` | `Bash(npm test *)`, `Bash(npm run lint *)`, `Bash(npm run build *)`, `Bash(npm install *)`, `Bash(npm ls *)` (avoid blanket `npm run *` — can execute any package.json script including deploys/migrations) |
 
 ### B. Add Missing Rules (Project-Type-Aware)
 
@@ -256,7 +256,7 @@ Based on detected project type, suggest additions unless the rule already exists
 |-------------|-----------------|
 | Python/uv | `Bash(uv sync)`, `Bash(uv run pytest *)`, `Bash(uv pip show *)`, `Bash(uv pip index versions *)`, `Bash(uv lock)` |
 | Node/npm | `Bash(npm test *)`, `Bash(npm run lint *)`, `Bash(npm run build *)`, `Bash(npx tsc *)` |
-| Node/bun | `Bash(bun test *)`, `Bash(bun run *)` |
+| Node/bun | `Bash(bun test *)`, `Bash(bun run lint *)`, `Bash(bun run build *)` (avoid blanket `bun run *` — same risk as `npm run *`) |
 | Rust | `Bash(cargo build *)`, `Bash(cargo test *)`, `Bash(cargo clippy *)`, `Bash(cargo fmt *)` |
 | Go | `Bash(go build *)`, `Bash(go test *)`, `Bash(go vet *)` |
 | Mise | One `Bash(mise run <task>)` or `Bash(mise run <task> *)` for each task from `mise tasks ls`. If a task is read-only (test, lint, typecheck, check), use exact match. If a task takes arguments, use wildcard. |
