@@ -442,7 +442,11 @@ Settings files are JSON. Follow these rules strictly:
 1. **Read before edit**: Always Read the file immediately before editing to get current content
 2. **Targeted array edits**: Use the Edit tool to modify specific entries in the `permissions.allow`, `permissions.deny`, or `permissions.ask` arrays. Never rewrite the entire file.
 3. **Preserve structure**: Never modify, reorder, or touch any fields outside of `permissions.allow`, `permissions.deny`, and `permissions.ask`
-4. **Validate after every edit**: After each edit, validate the file is still valid JSON by running: `python3 -c "import json; json.load(open('<file_path>'))"`. Tell the user you're validating (e.g., "Validating JSON...") so they know what the command is for. If validation fails, immediately fix the issue before proceeding. **This is mandatory — a broken settings file will prevent Claude Code from starting.**
+4. **Validate after every edit**: After each edit, validate the file is still valid JSON:
+   1. **Output a message first**: Tell the user what you're about to do (e.g., output "Validating JSON…") so they understand the upcoming Bash command.
+   2. **Run validation**: `python3 -c "import json; json.load(open('<file_path>'))"`.
+   3. If validation fails, immediately fix the issue before proceeding.
+   **This is mandatory — a broken settings file will prevent Claude Code from starting.**
 5. **Array operations**:
    - **Remove entry**: Edit the array to remove the specific line. **CRITICAL: When removing the last entry in an array, also remove the trailing comma from the new last entry.** JSON does not allow trailing commas. Example: removing entry C from `["A", "B", "C"]` must produce `["A", "B"]`, not `["A", "B",]`.
    - **Add entry**: Edit to insert at the end of the array before the closing `]`. Add a comma after the current last entry.
