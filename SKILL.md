@@ -40,7 +40,20 @@ Read each file. If a file doesn't exist, note it and continue.
 2. **Project shared**: `.claude/settings.json` (in project root)
 3. **Project local**: `.claude/settings.local.json` (in project root)
 
-Extract `permissions.allow`, `permissions.deny`, and `permissions.ask` arrays from each. Ignore all other fields (env, hooks, model, statusLine, spinnerVerbs, etc.) — they are out of scope and must never be modified.
+Extract `permissions.allow`, `permissions.deny`, and `permissions.ask` arrays from each. Also note the `permissions.defaultMode` value if set — it affects the overall security posture (see below). Ignore all other fields (env, hooks, model, statusLine, spinnerVerbs, etc.) — they are out of scope and must never be modified.
+
+### Default Mode Check
+
+Read `permissions.defaultMode` from each file. Surface the value in the Phase 4 summary. Flag if set to a permissive mode:
+
+| Mode | Risk | Note |
+|------|------|------|
+| `"default"` or absent | OK | Standard behavior — prompts on first use |
+| `"plan"` | OK | Requires plan approval |
+| `"bypassPermissions"` | CRITICAL | All permission rules are ignored — every tool auto-approved |
+| `"acceptEdits"` | HIGH | File edits auto-approved without review |
+
+Do not modify `defaultMode` — only surface it as informational context.
 
 ### Project Type Detection
 
@@ -93,18 +106,20 @@ Run every check below against every entry. One entry can trigger multiple findin
 
 **1. Overly Permissive Patterns**
 
-Flag entries that grant broad access to command families with known destructive subcommands:
+Flag entries in `allow` or `ask` that grant broad access to command families with known destructive subcommands. **Skip this check for `deny` entries** — broad patterns in deny are safety features, not risks.
 
-| Pattern | Risk | Why |
-|---------|------|-----|
-| `Bash(*)` | CRITICAL | Allows any command |
-| `Bash(sudo *)` | CRITICAL | Root access |
-| `Bash(rm -rf *)` | CRITICAL | Arbitrary deletion |
-| `Bash(docker compose *)` or `Bash(docker compose:*)` | HIGH | Includes `down -v`, `rm`, `exec` |
-| `Bash(find *)` or `Bash(find:*)` | HIGH | `-exec` allows arbitrary execution |
-| `Bash(git *)` or `Bash(git:*)` | HIGH | Includes destructive ops (reset, clean, push --force) |
-| `Bash(npm *)` or `Bash(npm:*)` | HIGH | `npm exec` allows arbitrary execution |
-| `Bash(PGPASSWORD=* psql *)` or `Bash(PGPASSWORD=* psql:*)` | CRITICAL | Arbitrary SQL execution. If password is a literal (not `*`), also a credential exposure issue (see check 4) |
+| Pattern | Risk (in allow) | Risk (in ask) | Why |
+|---------|----------------|---------------|-----|
+| `Bash(*)` | CRITICAL | HIGH | Allows any command |
+| `Bash(sudo *)` | CRITICAL | HIGH | Root access |
+| `Bash(rm -rf *)` | CRITICAL | HIGH | Arbitrary deletion |
+| `Bash(docker compose *)` or `Bash(docker compose:*)` | HIGH | MEDIUM | Includes `down -v`, `rm`, `exec` |
+| `Bash(find *)` or `Bash(find:*)` | HIGH | MEDIUM | `-exec` allows arbitrary execution |
+| `Bash(git *)` or `Bash(git:*)` | HIGH | MEDIUM | Includes destructive ops (reset, clean, push --force) |
+| `Bash(npm *)` or `Bash(npm:*)` | HIGH | MEDIUM | `npm exec` allows arbitrary execution |
+| `Bash(PGPASSWORD=* psql *)` or `Bash(PGPASSWORD=* psql:*)` | CRITICAL | CRITICAL | Arbitrary SQL execution. If password is a literal (not `*`), also a credential exposure issue (see check 4) |
+
+Risk is lower in `ask` (user still confirms each use) but broad `ask` patterns still warrant tightening.
 
 **2. Deprecated Syntax**
 
@@ -117,7 +132,8 @@ The legacy `:*` suffix syntax is deprecated. The current syntax uses a space: ` 
 **3. Duplicates**
 
 - **Exact duplicates**: Same string appears multiple times in the same file's allow, deny, or ask list
-- **Cross-file duplicates**: Same rule in both global and project settings (project rule is redundant if global already allows it). Always flag — let the user decide whether to keep or remove
+- **Cross-file duplicates (same tier)**: Same rule in the same array type across global and project settings (e.g., both have `Bash(uv sync)` in allow). The project rule is redundant. Always flag — let the user decide whether to keep or remove
+- **Cross-file narrowing (different tier)**: A global `allow` + project `ask` for the same pattern is **intentional narrowing** — the project wants a prompt despite global auto-approve. Do NOT flag these as duplicates. Similarly, a project `deny` overriding a global `allow` is intentional restriction
 - **Subset duplicates**: `Bash(mise run check *)` is a subset of `Bash(mise run check:*)` or vice versa. `Bash(pip index *)` subsumes `Bash(pip index versions *)`
 
 **4. Credential Exposure**
@@ -184,6 +200,30 @@ Flag when the same logical command uses different pattern styles across files:
 - Same command with `:*` in one file and ` *` in another
 - Same command with wildcard in one file and exact match in another (e.g., `Bash(uv sync)` in project vs `Bash(uv sync:*)` in global)
 
+**10. Broad Non-Bash Tool Patterns**
+
+Not all permissions are Bash commands. Flag overly broad patterns for other tool types:
+
+| Pattern | Risk | Why |
+|---------|------|-----|
+| `mcp__*` or `mcp__<server>__*` in allow | HIGH | Grants all operations for an MCP server — some may be destructive |
+| `Read(*)` or `Write(*)` in allow | HIGH | Unrestricted file read/write, including secrets |
+| `Edit(*)` in allow | MEDIUM | Unrestricted file editing |
+| `WebFetch(*)` or `WebSearch` in allow | LOW | Informational — broad but low-risk |
+
+For MCP wildcards like `mcp__logfire__*`, suggest scoping to specific operations if the server's available tools are known. Otherwise flag as informational.
+
+### Settings File Merge Semantics
+
+When analyzing cross-file interactions, understand that **project settings override global settings** for the same pattern. Evaluation order within each level: deny → ask → allow.
+
+This means:
+- Global `allow` + project `deny` for same pattern → project deny wins (intentional restriction)
+- Global `allow` + project `ask` for same pattern → project ask wins (intentional narrowing)
+- Global `deny` + project `allow` for same pattern → global deny still wins (deny at any level blocks)
+
+Use this understanding when assessing cross-file duplicates (check 3) and misplaced rules (check 8).
+
 ## Phase 3: Suggest
 
 Generate two categories of recommendations.
@@ -219,7 +259,7 @@ Based on detected project type, suggest additions unless the rule already exists
 | Mise | One `Bash(mise run <task>)` or `Bash(mise run <task> *)` for each task from `mise tasks ls`. If a task is read-only (test, lint, typecheck, check), use exact match. If a task takes arguments, use wildcard. |
 | Docker | `Bash(docker compose up -d)`, `Bash(docker compose ps *)`, `Bash(docker compose logs *)`, `Bash(docker compose build *)` |
 | GitHub | `Bash(gh pr list *)`, `Bash(gh pr view *)`, `Bash(gh pr diff *)`, `Bash(gh issue list *)`, `Bash(gh issue view *)` |
-| Make | `Bash(make *)` (if Makefile only has safe targets) or individual `Bash(make <target>)` entries |
+| Make | Individual `Bash(make <target>)` entries for each safe target (read the Makefile to enumerate). Do not suggest `Bash(make *)` — make targets can run arbitrary commands |
 
 Also suggest baseline deny and ask rules if missing (see Phase 2, check 6).
 
@@ -335,6 +375,7 @@ Settings files are JSON. Follow these rules strictly:
    - **Remove entry**: Edit the array to remove the specific line (handle trailing commas)
    - **Add entry**: Edit to insert at the end of the array before the closing `]`
    - **Replace entry**: Edit old string to new string
+   - **Create array**: If the file has no `ask` (or `deny`) array and one is needed, add it as a sibling to the existing arrays inside the `permissions` object. Example: insert `"ask": ["Bash(git commit *)"]` after the `allow` array's closing `]`
 6. **Batch edits**: When multiple changes apply to the same file, make them in a single Edit operation to avoid intermediate invalid states
 7. **Backup note**: Settings files are typically in git (`.claude/settings.json`) or gitignored (`settings.local.json`, `~/.claude/settings.json`). Remind the user they can `git checkout` project settings if needed, but global/local settings have no automatic backup.
 

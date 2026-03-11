@@ -1,6 +1,6 @@
 # permissions-audit
 
-Claude Code skill that audits your permission allow/deny lists across settings files. Flags overly permissive patterns, deprecated `:*` syntax, duplicates, credential exposure, missing safety rules, and suggests project-type-aware additions.
+Claude Code skill that audits your permission allow/deny/ask lists across settings files. Flags overly permissive patterns, deprecated `:*` syntax, duplicates, credential exposure, missing safety rules, and suggests project-type-aware additions.
 
 ## Install
 
@@ -29,7 +29,7 @@ In any Claude Code session:
 - **Duplicates** — exact, cross-file, and subset matches
 - **Credential exposure** — passwords/tokens embedded in patterns
 - **Built-in tool overlap** — `Bash(grep *)`, `Bash(find *)`, etc. where Grep/Glob/Read exist
-- **Missing deny rules** — force push, reset --hard, rm -rf, etc.
+- **Missing deny/ask rules** — force push, reset --hard, rm -rf in deny; git commit, git push in ask
 - **Misplaced rules** — project-specific entries in global settings
 - **Project-type suggestions** — detects Python/uv, Node, Rust, Go, Mise, Docker, GitHub and suggests scoped allows
 
