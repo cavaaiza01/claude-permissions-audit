@@ -153,12 +153,12 @@ Suggested **deny** rules (should never execute):
 
 Suggested **ask** rules (should prompt, not auto-approve or auto-deny):
 - `Bash(git commit *)` — human should review before committing
-- `Bash(git push *)` — human should review before pushing
+- `Bash(git push *)` — human should review before pushing (deny rules for `--force` take precedence, so this is safe)
 - `Bash(docker compose down *)` — stops services, may lose data with `-v`
 
 Check all three arrays across global and project settings. Global is preferred for baseline safety rules.
 
-**9. Wrong Array Placement**
+**7. Wrong Array Placement**
 
 Flag entries in the wrong permission array:
 - Destructive commands in `allow` that should be in `deny` or `ask` (e.g., `Bash(git push --force *)` in allow)
@@ -166,7 +166,7 @@ Flag entries in the wrong permission array:
 - Safe read-only commands in `deny` or `ask` that could be in `allow` (e.g., `Bash(git log *)` in ask)
 - Commands in `deny` that block legitimate use — suggest `ask` instead if the command is sometimes needed (e.g., `Bash(git commit *)` in deny blocks all commits; `ask` allows with confirmation)
 
-**7. Misplaced Rules**
+**8. Misplaced Rules**
 
 Flag project-specific entries in global settings that should live in the relevant project's `.claude/settings.json` or `.claude/settings.local.json`:
 
@@ -178,7 +178,7 @@ Flag project-specific entries in global settings that should live in the relevan
 
 Heuristic: If a command is only relevant to one project type (e.g., `vitest` for a specific Node project, `PGPASSWORD` for a specific database), it likely belongs in project settings.
 
-**8. Syntax Inconsistencies**
+**9. Syntax Inconsistencies**
 
 Flag when the same logical command uses different pattern styles across files:
 - Same command with `:*` in one file and ` *` in another
@@ -198,7 +198,7 @@ For entries flagged HIGH or CRITICAL, suggest specific replacements:
 | `Bash(docker compose:*)` | Same as above (also migrates deprecated syntax) |
 | `Bash(find *)` | Remove (use Glob) or scope: `Bash(find * -name *)`, `Bash(find * -type *)` |
 | `Bash(find:*)` | Same as above |
-| `Bash(git *)` | `Bash(git status *)`, `Bash(git log *)`, `Bash(git diff *)`, `Bash(git branch *)`, `Bash(git show *)`, `Bash(git stash *)` |
+| `Bash(git *)` | **allow**: `Bash(git status *)`, `Bash(git log *)`, `Bash(git diff *)`, `Bash(git branch *)`, `Bash(git show *)`, `Bash(git stash *)`; **ask**: `Bash(git commit *)`, `Bash(git push *)` |
 | `Bash(git:*)` | Same as above |
 | `Bash(PGPASSWORD=<literal> psql *)` | Remove from global. If needed in a project, add to that project's `.claude/settings.local.json` with tighter scope |
 | `Bash(npm *)` | `Bash(npm test *)`, `Bash(npm run *)`, `Bash(npm install *)`, `Bash(npm ls *)` |
@@ -278,7 +278,7 @@ After individual issues, present project-type suggestions as a group:
 ```
 ### Suggested Additions for Python/uv + Mise project
 
-These commands are commonly needed but not in your allow lists:
+These commands are commonly needed but not in your allow/ask lists:
 
 | # | Rule | File | Rationale |
 |---|------|------|-----------|
