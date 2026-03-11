@@ -148,6 +148,8 @@ The legacy `:*` suffix syntax is deprecated. The current syntax uses a space: ` 
 - Word boundary semantics: `Bash(ls *)` matches `ls -la` but NOT `lsof`. `Bash(ls*)` matches both.
 - Flag ALL `:*` entries as MEDIUM risk
 
+**Caution — commands with literal colons**: Many tools use colons in their command names: mise tasks (`mise run fe:lint`), Maven goals (`mvn dependency:tree`), npm scripts (`npm run build:prod`), Laravel artisan (`php artisan migrate:fresh`), Rake tasks (`rake db:migrate`), Gradle subprojects (`gradle :app:build`). A pattern like `Bash(npm run build:*)` looks like it should match `npm run build:prod`, but Claude Code interprets the trailing `:*` as the deprecated wildcard suffix — making it equivalent to `Bash(npm run build *)`, which requires a space after "build" and will NOT match `npm run build:prod`. When flagging `:*` entries, check whether the colon is part of the actual command name. If it is, the entry may need to be rewritten as individual exact-match rules (e.g., `Bash(npm run build:prod)`, `Bash(npm run build:dev)`) rather than simply migrated to ` *`.
+
 **3. Duplicates**
 
 - **Exact duplicates**: Same string appears multiple times in the same file's allow, deny, or ask list
@@ -396,6 +398,8 @@ If "pick individually", present each addition one at a time using `AskUserQuesti
 
 After all other changes, if there are `:*` entries that were NOT touched in Steps 2-3, present the migration table and use `AskUserQuestion` to ask: "Migrate all / Pick individually / Skip?"
 
+**Before presenting the table**, check each entry for literal colons — see the caution note in Check 2. If the colon appears to be part of the command name (e.g., `Bash(mise run fe:lint:*)`, `Bash(npm run build:*)`), flag it separately and suggest rewriting as exact-match rules instead of blindly migrating `:*` → ` *`.
+
 ```
 ### Deprecated `:*` Syntax Migration
 
@@ -431,7 +435,7 @@ Settings files are JSON. Follow these rules strictly:
 1. **Read before edit**: Always Read the file immediately before editing to get current content
 2. **Targeted array edits**: Use the Edit tool to modify specific entries in the `permissions.allow`, `permissions.deny`, or `permissions.ask` arrays. Never rewrite the entire file.
 3. **Preserve structure**: Never modify, reorder, or touch any fields outside of `permissions.allow`, `permissions.deny`, and `permissions.ask`
-4. **Validate after every edit**: After each edit, run `python3 -c "import json; json.load(open('<file_path>'))"` using the Bash tool to verify the file is valid JSON. If validation fails, immediately fix the issue before proceeding. **This is mandatory — a broken settings file will prevent Claude Code from starting.**
+4. **Validate after every edit**: After each edit, validate the file is still valid JSON by running: `python3 -c "import json; json.load(open('<file_path>'))"`. Tell the user you're validating (e.g., "Validating JSON...") so they know what the command is for. If validation fails, immediately fix the issue before proceeding. **This is mandatory — a broken settings file will prevent Claude Code from starting.**
 5. **Array operations**:
    - **Remove entry**: Edit the array to remove the specific line. **CRITICAL: When removing the last entry in an array, also remove the trailing comma from the new last entry.** JSON does not allow trailing commas. Example: removing entry C from `["A", "B", "C"]` must produce `["A", "B"]`, not `["A", "B",]`.
    - **Add entry**: Edit to insert at the end of the array before the closing `]`. Add a comma after the current last entry.
