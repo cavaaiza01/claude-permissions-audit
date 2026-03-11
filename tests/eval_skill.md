@@ -358,3 +358,237 @@ Run the skill in a project containing the fixture files and verify the output ma
 - Java/Gradle: `Bash(./gradlew build *)`, `Bash(./gradlew test *)`, `Bash(./gradlew check *)`
 - Ruby: `Bash(bundle exec rspec *)`, `Bash(bundle exec rake *)`, `Bash(bundle exec rubocop *)`, `Bash(bundle install)`
 - GitHub: `Bash(gh pr list *)`, `Bash(gh pr view *)`, `Bash(gh pr diff *)`, `Bash(gh issue list *)`, `Bash(gh issue view *)`
+
+---
+
+## Scenario 10: Catch-all `Bash(*)` and broad non-Bash patterns
+
+### Fixture: `~/.claude/settings.json` (global)
+```json
+{
+  "permissions": {
+    "allow": [
+      "Bash(*)",
+      "Read(*)",
+      "Write(*)",
+      "Edit(*)",
+      "mcp__slack__*",
+      "mcp__github__*",
+      "WebFetch(*)"
+    ],
+    "deny": [
+      "Bash(rm -rf /*)"
+    ]
+  }
+}
+```
+
+### Expected findings:
+
+| # | Severity | Check | Entry | Issue |
+|---|----------|-------|-------|-------|
+| 1 | CRITICAL | 1 | `Bash(*)` in allow | Allows any command — deny rules still apply but everything else auto-approved |
+| 2 | HIGH | 10 | `Read(*)` in allow | Unrestricted file read, including secrets |
+| 3 | HIGH | 10 | `Write(*)` in allow | Unrestricted file write |
+| 4 | MEDIUM | 10 | `Edit(*)` in allow | Unrestricted file editing |
+| 5 | HIGH | 10 | `mcp__slack__*` in allow | Broad MCP wildcard — grants all Slack operations |
+| 6 | HIGH | 10 | `mcp__github__*` in allow | Broad MCP wildcard — grants all GitHub operations |
+| 7 | LOW | 10 | `WebFetch(*)` in allow | Broad but low-risk |
+
+### Expected NON-findings:
+- `Bash(rm -rf /*)` in deny → NOT flagged (broad deny is a safety feature)
+
+---
+
+## Scenario 11: Multiple credential types in patterns
+
+### Fixture: `~/.claude/settings.json` (global)
+```json
+{
+  "permissions": {
+    "allow": [
+      "Bash(TOKEN=ghp_abc123 gh api *)",
+      "Bash(API_KEY=sk-proj-xyz curl *)",
+      "Bash(DATABASE_URL=postgres://admin:secret@prod:5432/mydb psql *)",
+      "Bash(MYSQL_PWD=rootpass mysql *)",
+      "Bash(git log *)",
+      "Bash(git status *)"
+    ],
+    "deny": [
+      "Bash(git push --force *)",
+      "Bash(git reset --hard *)",
+      "Bash(git clean -f *)",
+      "Bash(sudo *)",
+      "Bash(rm -rf /*)",
+      "Bash(rm -rf ~*)"
+    ],
+    "ask": [
+      "Bash(git commit *)",
+      "Bash(git push *)"
+    ]
+  }
+}
+```
+
+### Expected findings:
+
+| # | Severity | Check | Entry | Issue |
+|---|----------|-------|-------|-------|
+| 1 | CRITICAL | 4 | `TOKEN=ghp_abc123 gh api *` | Credential exposure — GitHub token in plain text |
+| 2 | CRITICAL | 4 | `API_KEY=sk-proj-xyz curl *` | Credential exposure — API key in plain text |
+| 3 | CRITICAL | 4 | `DATABASE_URL=postgres://admin:secret@prod:5432/mydb psql *` | Credential exposure — database connection string with embedded password |
+| 4 | CRITICAL | 4 | `MYSQL_PWD=rootpass mysql *` | Credential exposure — MySQL password in plain text |
+
+### Expected suggestions:
+- Remove all credential-bearing entries from global settings
+- If needed, add to project's `.claude/settings.local.json` with tighter scope
+
+---
+
+## Scenario 12: Literal colons in command names
+
+### Fixture: `~/.claude/settings.json` (global)
+```json
+{
+  "permissions": {
+    "allow": [
+      "Bash(mise run fe:*)",
+      "Bash(npm run build:*)",
+      "Bash(rake db:*)",
+      "Bash(mise run check *)",
+      "Bash(git log *)"
+    ],
+    "deny": [
+      "Bash(git push --force *)",
+      "Bash(git reset --hard *)",
+      "Bash(git clean -f *)",
+      "Bash(sudo *)",
+      "Bash(rm -rf /*)",
+      "Bash(rm -rf ~*)"
+    ],
+    "ask": [
+      "Bash(git commit *)",
+      "Bash(git push *)"
+    ]
+  }
+}
+```
+
+### Expected findings:
+
+| # | Severity | Check | Entry | Issue |
+|---|----------|-------|-------|-------|
+| 1 | MEDIUM | 2 | `mise run fe:*` | Deprecated `:*` syntax — BUT colon is likely part of mise task name. Migrating to `mise run fe *` would NOT match `mise run fe:lint`. Needs rewrite as individual exact-match rules |
+| 2 | MEDIUM | 2 | `npm run build:*` | Deprecated `:*` syntax — BUT colon is likely part of npm script name. `npm run build *` would NOT match `npm run build:prod`. Needs exact-match rules |
+| 3 | MEDIUM | 2 | `rake db:*` | Deprecated `:*` syntax — BUT colon is part of rake task name. `rake db *` would NOT match `rake db:migrate`. Needs exact-match rules |
+
+### Expected NON-findings:
+- `mise run check *` → NOT flagged for colon issues (no colon, uses modern ` *` syntax)
+
+### Key behavior:
+- The skill MUST warn the user that these `:*` entries contain literal colons and cannot be blindly migrated to ` *`
+- Suggest listing each colon-command explicitly instead (e.g., `Bash(mise run fe:lint)`, `Bash(mise run fe:test)`)
+
+---
+
+## Scenario 13: Cross-file interactions with settings.local.json
+
+### Fixture: `~/.claude/settings.json` (global)
+```json
+{
+  "permissions": {
+    "allow": [
+      "Bash(git log *)",
+      "Bash(git status *)",
+      "Bash(uv run pytest *)"
+    ],
+    "deny": [
+      "Bash(git push --force *)"
+    ],
+    "ask": [
+      "Bash(git commit *)"
+    ]
+  }
+}
+```
+
+### Fixture: `.claude/settings.json` (project shared)
+```json
+{
+  "permissions": {
+    "allow": [
+      "Bash(uv run pytest *)",
+      "Bash(mise run check)"
+    ]
+  }
+}
+```
+
+### Fixture: `.claude/settings.local.json` (project local)
+```json
+{
+  "permissions": {
+    "allow": [
+      "Bash(uv run pytest *)",
+      "Bash(PGPASSWORD=devpass psql -d myapp_dev *)"
+    ]
+  }
+}
+```
+
+### Expected findings:
+
+| # | Severity | Check | Entry | Issue |
+|---|----------|-------|-------|-------|
+| 1 | CRITICAL | 1+4 | `PGPASSWORD=devpass psql -d myapp_dev *` in local allow | Credential exposure + arbitrary SQL. Acceptable in local file but password is in plain text |
+| 2 | LOW | 3 | `uv run pytest *` in project shared allow | Redundant — already in global allow |
+| 3 | LOW | 3 | `uv run pytest *` in project local allow | Redundant — already in global allow and project shared allow |
+
+### Expected NON-findings:
+- `git commit *` in global ask → NOT flagged (only in one file)
+- `mise run check` in project shared → NOT flagged (only in one file, exact match is fine)
+- Credential in `.local.json` should still be flagged for exposure, but the file location (local, gitignored) is appropriate
+
+---
+
+## Scenario 14: Package manager wildcards (make, yarn, pnpm)
+
+### Fixture: `~/.claude/settings.json` (global)
+```json
+{
+  "permissions": {
+    "allow": [
+      "Bash(make *)",
+      "Bash(yarn *)",
+      "Bash(pnpm *)",
+      "Bash(git log *)",
+      "Bash(git status *)"
+    ],
+    "deny": [
+      "Bash(git push --force *)",
+      "Bash(git reset --hard *)",
+      "Bash(git clean -f *)",
+      "Bash(sudo *)",
+      "Bash(rm -rf /*)",
+      "Bash(rm -rf ~*)"
+    ],
+    "ask": [
+      "Bash(git commit *)",
+      "Bash(git push *)"
+    ]
+  }
+}
+```
+
+### Expected findings:
+
+| # | Severity | Check | Entry | Issue |
+|---|----------|-------|-------|-------|
+| 1 | HIGH | 1 | `make *` in allow | Make targets are arbitrary shell commands — enumerate safe targets individually |
+| 2 | HIGH | 1 | `yarn *` in allow | `yarn dlx` allows arbitrary execution; `yarn run` can execute any script |
+| 3 | HIGH | 1 | `pnpm *` in allow | `pnpm dlx`/`pnpm exec` allows arbitrary execution |
+
+### Expected suggestions:
+- Tighten `make *` → remove and list individual safe targets (e.g., `Bash(make test)`, `Bash(make lint)`)
+- Tighten `yarn *` → `Bash(yarn test *)`, `Bash(yarn lint *)`, `Bash(yarn build *)`
+- Tighten `pnpm *` → `Bash(pnpm test *)`, `Bash(pnpm run lint *)`, `Bash(pnpm run build *)`

@@ -137,6 +137,9 @@ Flag entries in `allow` or `ask` that grant broad access to command families wit
 | `Bash(PGPASSWORD=* psql *)` or `Bash(PGPASSWORD=* psql:*)` | CRITICAL | CRITICAL | Arbitrary SQL execution. If password is a literal (not `*`), also a credential exposure issue (see check 4) |
 | `Bash(terraform *)` or `Bash(terraform:*)` | HIGH | MEDIUM | `terraform apply`, `terraform destroy` can modify/delete infrastructure |
 | `Bash(kubectl *)` or `Bash(kubectl:*)` | HIGH | MEDIUM | `kubectl delete`, `kubectl exec` can destroy resources or run arbitrary commands |
+| `Bash(make *)` or `Bash(make:*)` | HIGH | MEDIUM | Make targets are arbitrary shell commands — equivalent to `Bash(*)` for that target |
+| `Bash(yarn *)` or `Bash(yarn:*)` | HIGH | MEDIUM | `yarn dlx` allows arbitrary execution; `yarn run` can execute any package.json script |
+| `Bash(pnpm *)` or `Bash(pnpm:*)` | HIGH | MEDIUM | `pnpm dlx`/`pnpm exec` allows arbitrary execution; same risk profile as npm/yarn |
 
 Risk is lower in `ask` (user still confirms each use) but broad `ask` patterns still warrant tightening.
 
@@ -233,7 +236,7 @@ Not all permissions are Bash commands. Flag overly broad patterns for other tool
 | `Edit(*)` in allow | MEDIUM | Unrestricted file editing |
 | `WebFetch(*)` or `WebSearch` in allow | LOW | Informational — broad but low-risk |
 
-For MCP wildcards like `mcp__logfire__*`, suggest scoping to specific operations if the server's available tools are known. Otherwise flag as informational.
+For MCP wildcards like `mcp__logfire__*`, suggest scoping to specific operations if the server's available tools are known. Otherwise flag as HIGH and note that the risk depends on what the server exposes.
 
 **11. Usage Log Analysis (optional)**
 
@@ -277,6 +280,9 @@ For entries flagged HIGH or CRITICAL, suggest specific replacements:
 | `Bash(npm *)` | `Bash(npm test *)`, `Bash(npm run lint *)`, `Bash(npm run build *)`, `Bash(npm install *)`, `Bash(npm ls *)` (avoid blanket `npm run *` — can execute any package.json script including deploys/migrations) |
 | `Bash(terraform *)` | **allow**: `Bash(terraform init *)`, `Bash(terraform plan *)`, `Bash(terraform fmt *)`, `Bash(terraform validate *)`; **ask**: `Bash(terraform apply *)`, `Bash(terraform import *)`; **deny**: `Bash(terraform destroy *)` |
 | `Bash(kubectl *)` | **allow**: `Bash(kubectl get *)`, `Bash(kubectl describe *)`, `Bash(kubectl logs *)`; **ask**: `Bash(kubectl apply *)`, `Bash(kubectl create *)`, `Bash(kubectl exec *)`; **deny**: `Bash(kubectl delete *)` |
+| `Bash(make *)` | Remove and enumerate individual safe targets from Makefile as exact matches (e.g., `Bash(make test)`, `Bash(make lint)`). Do NOT suggest `Bash(make *)` — make targets can run arbitrary commands |
+| `Bash(yarn *)` | `Bash(yarn test *)`, `Bash(yarn lint *)`, `Bash(yarn build *)`, `Bash(yarn tsc *)` (avoid blanket `yarn run *` — same risk as `npm run *`) |
+| `Bash(pnpm *)` | `Bash(pnpm test *)`, `Bash(pnpm run lint *)`, `Bash(pnpm run build *)`, `Bash(pnpm exec tsc *)` (avoid blanket `pnpm run *`) |
 
 ### B. Add Missing Rules (Project-Type-Aware)
 
