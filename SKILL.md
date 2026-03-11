@@ -95,14 +95,16 @@ Analyze every entry in every allow/deny/ask list. Classify each finding by risk 
 
 | Risk | Criteria | Examples |
 |------|----------|---------|
-| **CRITICAL** | Allows arbitrary execution or data destruction | `Bash(*)`, `Bash(sudo *)`, `Bash(rm -rf *)`, credentials in patterns |
-| **HIGH** | Broad wildcard on command family with destructive subcommands | `Bash(docker compose *)`, `Bash(find *)`, `Bash(git *)` |
+| **CRITICAL** | Allows arbitrary execution or data destruction (in allow/ask) | `Bash(*)`, `Bash(sudo *)`, `Bash(rm -rf *)`, credentials in patterns |
+| **HIGH** | Broad wildcard on risky command family (in allow/ask) | `Bash(docker compose *)`, `Bash(find *)`, `Bash(git *)` |
 | **MEDIUM** | Deprecated syntax, broader than necessary, duplicates, built-in overlap | `:*` patterns, redundant entries, `Bash(grep *)` |
 | **LOW** | Hygiene/informational | Stale WebFetch domains, subset duplicates, style inconsistencies |
 
+Note: Broad patterns in `deny` are safety features, not risks — see check 1 for array-context-aware classification.
+
 ### Checks to Perform
 
-Run every check below against every entry. One entry can trigger multiple findings.
+Run every check below against every entry. One entry can trigger multiple findings. When multiple checks flag the same entry, **consolidate into a single finding** using the highest severity and combining the rationale (e.g., an entry that is both overly permissive and in the wrong array → one finding, not two).
 
 **1. Overly Permissive Patterns**
 
@@ -215,14 +217,15 @@ For MCP wildcards like `mcp__logfire__*`, suggest scoping to specific operations
 
 ### Settings File Merge Semantics
 
-When analyzing cross-file interactions, understand that **project settings override global settings** for the same pattern. Evaluation order within each level: deny → ask → allow.
+Rules from all files are merged, then the **most restrictive tier wins regardless of source file**: deny > ask > allow. If a pattern matches a deny in ANY file, it's denied — no other file can override it. Same for ask over allow.
 
-This means:
-- Global `allow` + project `deny` for same pattern → project deny wins (intentional restriction)
-- Global `allow` + project `ask` for same pattern → project ask wins (intentional narrowing)
-- Global `deny` + project `allow` for same pattern → global deny still wins (deny at any level blocks)
+Examples:
+- Global `allow` + project `deny` → denied (deny wins)
+- Global `allow` + project `ask` → prompted (ask wins)
+- Global `ask` + project `allow` → prompted (ask wins — NOT project overriding global)
+- Global `deny` + project `allow` → denied (deny wins)
 
-Use this understanding when assessing cross-file duplicates (check 3) and misplaced rules (check 8).
+This means cross-file "narrowing" (a project adding an ask or deny for something globally allowed) is a legitimate pattern, not a conflict. Use this understanding when assessing cross-file duplicates (check 3) and misplaced rules (check 8).
 
 ## Phase 3: Suggest
 
@@ -241,7 +244,7 @@ For entries flagged HIGH or CRITICAL, suggest specific replacements:
 | `Bash(git *)` | **allow**: `Bash(git status *)`, `Bash(git log *)`, `Bash(git diff *)`, `Bash(git branch *)`, `Bash(git show *)`, `Bash(git stash *)`; **ask**: `Bash(git commit *)`, `Bash(git push *)` |
 | `Bash(git:*)` | Same as above |
 | `Bash(PGPASSWORD=<literal> psql *)` | Remove from global. If needed in a project, add to that project's `.claude/settings.local.json` with tighter scope |
-| `Bash(npm *)` | `Bash(npm test *)`, `Bash(npm run *)`, `Bash(npm install *)`, `Bash(npm ls *)` |
+| `Bash(npm *)` | `Bash(npm test *)`, `Bash(npm run lint *)`, `Bash(npm run build *)`, `Bash(npm run test *)`, `Bash(npm install *)`, `Bash(npm ls *)` (avoid blanket `npm run *` — can execute any package.json script including deploys/migrations) |
 
 ### B. Add Missing Rules (Project-Type-Aware)
 
@@ -278,6 +281,7 @@ Present a summary table:
 
 **Project type**: Python/uv + Mise + Docker + GitHub
 **Files scanned**: 3 (global, project shared, project local)
+**Default mode**: plan (OK)
 
 | Severity | Count |
 |----------|-------|
@@ -320,11 +324,12 @@ After individual issues, present project-type suggestions as a group:
 
 These commands are commonly needed but not in your allow/ask lists:
 
-| # | Rule | File | Rationale |
-|---|------|------|-----------|
-| 1 | `Bash(mise run dev)` | project shared | Dev server task |
-| 2 | `Bash(gh issue list *)` | global | GitHub issue browsing |
-| ... | ... | ... | ... |
+| # | Rule | Array | File | Rationale |
+|---|------|-------|------|-----------|
+| 1 | `Bash(mise run dev)` | allow | project shared | Dev server task |
+| 2 | `Bash(gh issue list *)` | allow | global | GitHub issue browsing |
+| 3 | `Bash(git push *)` | ask | global | Push with human review |
+| ... | ... | ... | ... | ... |
 
 Add all / Pick individually / Skip all?
 ```

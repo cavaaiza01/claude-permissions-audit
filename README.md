@@ -30,7 +30,10 @@ In any Claude Code session:
 - **Credential exposure** — passwords/tokens embedded in patterns
 - **Built-in tool overlap** — `Bash(grep *)`, `Bash(find *)`, etc. where Grep/Glob/Read exist
 - **Missing deny/ask rules** — force push, reset --hard, rm -rf in deny; git commit, git push in ask
+- **Wrong array placement** — destructive commands in allow that belong in deny/ask, or safe commands in deny that should be ask/allow
 - **Misplaced rules** — project-specific entries in global settings
+- **Broad non-Bash patterns** — overly permissive `mcp__*`, `Read(*)`, `Write(*)` rules
+- **Default mode check** — flags `bypassPermissions` and other permissive modes
 - **Project-type suggestions** — detects Python/uv, Node, Rust, Go, Mise, Docker, GitHub and suggests scoped allows
 
 All changes are interactive — nothing is modified without your approval.
